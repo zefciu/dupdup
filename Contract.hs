@@ -19,7 +19,7 @@ suitType Spades = Major
 suitType NoTrump = NoTrumpType
 
 
-data Side = N | S | E | W deriving (Show, Eq)
+data Side = N | S | E | W deriving (Show, Read, Eq)
 
 data Pair = NS | EW deriving (Show, Eq)
 pair :: Side -> Pair
@@ -75,7 +75,7 @@ trickPoints all c
 bidTrickPoints = trickPoints False
 allTrickPoints = trickPoints True
 
-newtype Bonus = Contract -> Int
+type Bonus = (Contract -> Int)
 
 contractBonus :: Bonus
 contractBonus c
@@ -86,21 +86,16 @@ contractBonus c
 insultBonus :: Bonus
 insultBonus c = case (doubl c) of
     NotDoubled -> 0
-    DoubleLevel -> 50
+    Doubled -> 50
     Redoubled -> 100
 
 slamBonus :: Bonus
-slamBonus c =
-    bid c < 6 | 0
-    bid c == 6 && not $ vulnerable c | 500
-    bid c == 6 && vulnerable c | 750
-    bid c == 7 && not $ vulnerable c | 1000
-    bid c == 7 && vulnerable c | 1500
+slamBonus c
+    | bid c < 6 = 0
+    | bid c == 6 && not (vulnerable c) = 500
+    | bid c == 6 && vulnerable c = 750
+    | bid c == 7 && not (vulnerable c) = 1000
+    | bid c == 7 && vulnerable c = 1500
 
 doneContractPoints :: Contract -> Int
-doneContractPoints = (
-    allTrickPoints c +
-    contractBonus c +
-    insultBonus c +
-    slamBonus c
-)
+doneContractPoints c = allTrickPoints c + contractBonus c + insultBonus c + slamBonus c
