@@ -42,6 +42,10 @@ pair S = NS
 pair E = EW
 pair W = EW
 
+opposite :: Pair -> Pair
+opposite NS = EW
+opposite EW = NS
+
 vuln :: Int -> Pair -> Bool
 vuln board pair
     | shiftedPos == 3 = True
@@ -153,4 +157,27 @@ doneContractPoints c = bidTrickPoints c +
                        insultBonus c +
                        slamBonus c
 
-score = doneContractPoints
+undoubledUnderTrick :: Int -> Bool -> Int
+undoubledUnderTrick under vuln = under * perTrick
+    where perTrick = if (vuln) then 100 else 50
+
+doubledUnderTrick :: Int -> Bool -> Int
+doubledUnderTrick under vuln
+    | under == 1 = if (vuln) then 200 else 100
+    | under < 4 = if (vuln)
+        then 200 + (under - 1) * 300
+        else 100 + (under - 1) * 200
+    | under >= 4 = if (vuln)
+        then 800 + (under - 3) * 800
+        else 500 + (under - 3) * 300
+
+downContractPoints :: PointsForContract
+downContractPoints c
+    | d == NotDoubled = undoubledUnderTrick (-(overUnder c)) (vulnerable c)
+    | d == Doubled = doubledUnderTrick (-(overUnder c)) (vulnerable c)
+    | d == Redoubled = 2 * (doubledUnderTrick (-(overUnder c)) (vulnerable c))
+    where d = doubl c
+
+score c 
+    | overUnder c < 0 = ((opposite $ pair $ player c), downContractPoints c)
+    | otherwise = ((pair $ player c), doneContractPoints c)
