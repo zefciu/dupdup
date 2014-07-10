@@ -152,3 +152,5 @@ doneContractPoints c = bidTrickPoints c +
                        contractBonus c +
                        insultBonus c +
                        slamBonus c
+
+score = doneContractPoints
