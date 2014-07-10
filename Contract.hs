@@ -1,6 +1,7 @@
 module Contract where
 
 import Data.String.Utils (join)
+import Data.List.Split (splitOn)
 
 data Suit = Clubs | Diamonds | Hearts | Spades | NoTrump deriving Eq
 
@@ -64,6 +65,13 @@ instance Read DoubleLevel where
     readsPrec _ ('x' : xs) = [(Doubled, xs)]
     readsPrec _ (xs) = [(NotDoubled, xs)]
 
+parseBidStr :: String -> [(Int, Suit, DoubleLevel)]
+parseBidStr s = do
+    (b, s1) <- reads s
+    (su, s2) <- reads s1
+    (d, _) <- reads s2
+    return (b, su, d)
+
 data Contract = Contract {
     board :: Int,
     player :: Side,
@@ -76,9 +84,17 @@ data Contract = Contract {
 instance Show Contract where
     show c = join "," [
         show $ board c,
+        show $ player c,
         shows (bid c) (shows (suit c) (show (doubl c))),
         show $ taken c
         ]
+
+instance Read Contract where
+    readsPrec _ s =
+        [(Contract (read board) (read player) bid suit doubl (read taken),
+          "")]
+        where [board, player, bidStr, taken] = splitOn "," s
+              (bid, suit, doubl) = head $ parseBidStr bidStr
 
 vulnerable :: Contract -> Bool
 vulnerable c = vuln (board c) (pair $ player c)
