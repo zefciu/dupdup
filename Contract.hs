@@ -1,5 +1,7 @@
 module Contract where
 
+import Data.String.Utils (join)
+
 data Suit = Clubs | Diamonds | Hearts | Spades | NoTrump deriving Eq
 
 instance Show Suit where
@@ -50,7 +52,17 @@ vuln board pair
           (cycle, pos) = board0 `divMod` 4
           shiftedPos = (pos + cycle) `mod` 4
 
-data DoubleLevel = NotDoubled | Doubled | Redoubled deriving (Show, Eq)
+data DoubleLevel = NotDoubled | Doubled | Redoubled deriving (Eq)
+
+instance Show DoubleLevel where
+    show NotDoubled = ""
+    show Doubled = "x"
+    show Redoubled = "xx"
+
+instance Read DoubleLevel where
+    readsPrec _ ('x' : 'x' : xs) = [(Redoubled, xs)]
+    readsPrec _ ('x' : xs) = [(Doubled, xs)]
+    readsPrec _ (xs) = [(NotDoubled, xs)]
 
 data Contract = Contract {
     board :: Int,
@@ -59,13 +71,21 @@ data Contract = Contract {
     suit :: Suit,
     doubl :: DoubleLevel,
     taken :: Int
-} deriving (Show, Eq)
+} deriving (Eq)
+
+instance Show Contract where
+    show c = join "," [
+        show $ board c,
+        shows (bid c) (shows (suit c) (show (doubl c))),
+        show $ taken c
+        ]
 
 vulnerable :: Contract -> Bool
 vulnerable c = vuln (board c) (pair $ player c)
 
 overUnder :: Contract -> Int
 overUnder c = (taken c) - (6 + bid c)
+
 
 
 baseTrickPoints :: Suit -> Int
