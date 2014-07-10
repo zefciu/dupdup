@@ -9,6 +9,17 @@ instance Show Suit where
     show Spades = "♠"
     show NoTrump = "NT"
 
+instance Read Suit where
+    readsPrec _ ('♣' : xs) = [(Clubs, xs)]
+    readsPrec _ ('C' : xs) = [(Clubs, xs)]
+    readsPrec _ ('♢' : xs) = [(Diamonds, xs)]
+    readsPrec _ ('D' : xs) = [(Diamonds, xs)]
+    readsPrec _ ('♡' : xs) = [(Hearts, xs)]
+    readsPrec _ ('H' : xs) = [(Hearts, xs)]
+    readsPrec _ ('♠' : xs) = [(Spades, xs)]
+    readsPrec _ ('S' : xs) = [(Spades, xs)]
+    readsPrec _ ('N' : 'T' : xs) = [(NoTrump, xs)]
+
 data SuitType = Minor | Major | NoTrumpType deriving (Show, Eq)
 
 suitType :: Suit -> SuitType
@@ -56,40 +67,42 @@ vulnerable c = vuln (board c) (pair $ player c)
 overUnder :: Contract -> Int
 overUnder c = (taken c) - (6 + bid c)
 
-baseTrickPoints :: Bool -> Contract -> Int
-baseTrickPoints all c
-    |st == Minor = tricks * 20
-    |st == Major = tricks * 30
-    |st == NoTrumpType = tricks * 30 + 10
+
+baseTrickPoints :: Suit -> Int
+baseTrickPoints s
+    |st == Minor = 20
+    |st == Major = 30
+    |st == NoTrumpType =  30
     where
-        st = suitType $ suit c
-        tricks = if all then ((taken c) - 6) else (bid c)
+        st = suitType s
 
-trickPoints :: Bool -> Contract -> Int
-trickPoints all c
-    |doubl c == NotDoubled = base
-    |doubl c == Doubled = base * 2
-    |doubl c == Redoubled = base * 4
-    where base = baseTrickPoints all c
+type PointsForContract = (Contract -> Int)
 
-bidTrickPoints = trickPoints False
-allTrickPoints = trickPoints True
+bidTrickPoints :: PointsForContract
+bidTrickPoints c = baseTrickPoints (suit c) * (bid c) + firstTrick
+    where firstTrick = if (suit c == NoTrump) then 10 else 0
 
-type Bonus = (Contract -> Int)
+overTrickBonus :: PointsForContract
+overTrickBonus c
+    | doubl c == NotDoubled = baseTrickPoints (suit c) * (overUnder c)
+    | doubl c == Doubled && not (vulnerable c) = (overUnder c) * 100
+    | doubl c == Doubled && vulnerable c = (overUnder c) * 200
+    | doubl c == Redoubled && not (vulnerable c) = (overUnder c) * 200
+    | doubl c == Redoubled && vulnerable c = (overUnder c) * 400
 
-contractBonus :: Bonus
+contractBonus :: PointsForContract
 contractBonus c
     | bidTrickPoints c < 0 = 50
     | vulnerable c = 500
     | otherwise = 300
 
-insultBonus :: Bonus
+insultBonus :: PointsForContract
 insultBonus c = case (doubl c) of
     NotDoubled -> 0
     Doubled -> 50
     Redoubled -> 100
 
-slamBonus :: Bonus
+slamBonus :: PointsForContract
 slamBonus c
     | bid c < 6 = 0
     | bid c == 6 && not (vulnerable c) = 500
@@ -97,5 +110,9 @@ slamBonus c
     | bid c == 7 && not (vulnerable c) = 1000
     | bid c == 7 && vulnerable c = 1500
 
-doneContractPoints :: Contract -> Int
-doneContractPoints c = allTrickPoints c + contractBonus c + insultBonus c + slamBonus c
+doneContractPoints :: PointsForContract
+doneContractPoints c = bidTrickPoints c +
+                       overTrickBonus c + 
+                       contractBonus c +
+                       insultBonus c +
+                       slamBonus c
