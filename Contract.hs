@@ -132,7 +132,7 @@ overTrickBonus c
 
 contractBonus :: PointsForContract
 contractBonus c
-    | bidTrickPoints c < 0 = 50
+    | bidTrickPoints c < 100 = 50
     | vulnerable c = 500
     | otherwise = 300
 
